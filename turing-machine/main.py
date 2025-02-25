@@ -122,3 +122,5 @@ if __name__ == "__main__":
         tm = TuringMachine(tape=expression)
         tm.process_expression()
         print("✅ Resultado en binario:", tm.get_tape())
+
+#funciona con 2 expresiones
