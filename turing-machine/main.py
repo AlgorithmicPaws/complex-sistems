@@ -1,3 +1,5 @@
+import re
+
 class TuringMachine:
     def __init__(self, tape="", blank_symbol=" ", initial_state="", final_states=None, transition_function=None):
         self.tape = list(tape)
@@ -34,20 +36,9 @@ class TuringMachine:
 
     def process_expression(self):
         expression = self.get_tape()
-        if '+' in expression:
-            self.add()
-        elif '-' in expression:
-            self.subtract()
-        elif '*' in expression:
-            self.multiply()
-        elif '/' in expression:
-            self.divide()
-        elif '%' in expression:
-            self.modulo()
-        elif '^' in expression:
-            self.power()
-        elif '√' in expression:
-            self.square_root()
+        result = self.evaluate_expression(expression)
+        if result is not None:
+            self.tape = list(self.to_binary(result))
         else:
             self.tape = list("ERROR")
         self.current_state = 'HALT'
@@ -58,65 +49,90 @@ class TuringMachine:
     def to_binary(self, number):
         return bin(number)[2:]  # Eliminar el prefijo '0b'
 
-    def add(self):
-        numbers = self.get_tape().split('+')
-        result = self.to_decimal(numbers[0]) + self.to_decimal(numbers[1])
-        self.tape = list(self.to_binary(result))
+    def evaluate_expression(self, expression):
+        try:
+            # Convierte números binarios a decimales y procesa paréntesis
+            expression = self.handle_parentheses(expression)
+            return expression
+        except:
+            return None
 
-    def subtract(self):
-        numbers = self.get_tape().split('-')
-        result = self.to_decimal(numbers[0]) - self.to_decimal(numbers[1])
-        result = max(0, result)  # Evitar negativos
-        self.tape = list(self.to_binary(result))
+    def handle_parentheses(self, expression):
+        # Busca y evalúa los paréntesis más internos primero
+        while '(' in expression:
+            inner_expr = re.search(r'\(([^()]+)\)', expression)
+            if not inner_expr:
+                return None  # Paréntesis mal formados
 
-    def multiply(self):
-        numbers = self.get_tape().split('*')
-        result = self.to_decimal(numbers[0]) * self.to_decimal(numbers[1])
-        self.tape = list(self.to_binary(result))
+            inner_value = self.evaluate_simple_expression(inner_expr.group(1))
+            if inner_value is None:
+                return None
 
-    def divide(self):
-        numbers = self.get_tape().split('/')
-        divisor = self.to_decimal(numbers[1])
-        if divisor == 0:
-            result = 'ERROR'
+            # Sustituir la expresión evaluada en la cadena original
+            expression = expression[:inner_expr.start()] + self.to_binary(inner_value) + expression[inner_expr.end():]
+
+        # Evaluar la expresión sin paréntesis
+        return self.evaluate_simple_expression(expression)
+
+    def evaluate_simple_expression(self, expr):
+        # Convierte binarios a decimales
+        tokens = re.split(r'([+\-*/%^√])', expr)
+        tokens = [self.to_decimal(token) if re.fullmatch(r'[01]+', token) else token for token in tokens]
+
+        # Aplica operaciones según prioridad
+        tokens = self.apply_operations(tokens, ['^', '√'])
+        tokens = self.apply_operations(tokens, ['*', '/', '%'])
+        tokens = self.apply_operations(tokens, ['+', '-'])
+
+        return tokens[0] if tokens else None
+
+    def apply_operations(self, tokens, operators):
+        i = 0
+        while i < len(tokens):
+            if tokens[i] in operators:
+                operator = tokens[i]
+                if operator == '√':
+                    operand = tokens[i + 1]
+                    result = int(operand ** 0.5)
+                    tokens[i:i + 2] = [result]
+                else:
+                    left = tokens[i - 1]
+                    right = tokens[i + 1]
+                    result = self.perform_operation(left, right, operator)
+                    tokens[i - 1:i + 2] = [result]
+                    i -= 1
+            i += 1
+        return tokens
+
+    def perform_operation(self, left, right, operator):
+        if operator == '+':
+            return left + right
+        elif operator == '-':
+            return max(0, left - right)  # Evita negativos
+        elif operator == '*':
+            return left * right
+        elif operator == '/':
+            return left // right if right != 0 else 0
+        elif operator == '%':
+            return left % right if right != 0 else 0
+        elif operator == '^':
+            return left ** right
         else:
-            result = self.to_decimal(numbers[0]) // divisor
-            result = self.to_binary(result)
-        self.tape = list(result)
-
-    def modulo(self):
-        numbers = self.get_tape().split('%')
-        divisor = self.to_decimal(numbers[1])
-        if divisor == 0:
-            result = 'ERROR'
-        else:
-            result = self.to_decimal(numbers[0]) % divisor
-            result = self.to_binary(result)
-        self.tape = list(result)
-
-    def power(self):
-        numbers = self.get_tape().split('^')
-        result = self.to_decimal(numbers[0]) ** self.to_decimal(numbers[1])
-        self.tape = list(self.to_binary(result))
-
-    def square_root(self):
-        number = self.to_decimal(self.get_tape().replace('√', ''))
-        result = int(number ** 0.5)
-        self.tape = list(self.to_binary(result))
+            return 0
 
 
 # 🔥 Ejecutar desde consola
 if __name__ == "__main__":
     while True:
-        expression = input("💻 Ingresa una operación en binario (o 'salir' para terminar): ")
+        expression = input("💻 Ingresa una operación en binario con paréntesis (o 'salir' para terminar): ")
         if expression.lower() == 'salir':
             print("👋 ¡Hasta luego!")
             break
 
-        # Validación de binario
-        valid_chars = {'0', '1', '+', '-', '*', '/', '%', '^', '√'}
+        # Validación de binario y caracteres permitidos
+        valid_chars = {'0', '1', '+', '-', '*', '/', '%', '^', '√', '(', ')'}
         if not set(expression).issubset(valid_chars):
-            print("❌ Solo se permiten números binarios y operadores válidos.")
+            print("❌ Solo se permiten números binarios, operadores válidos y paréntesis.")
             continue
 
         tm = TuringMachine(tape=expression)
