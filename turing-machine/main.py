@@ -31,3 +31,94 @@ class TuringMachine:
 
     def get_tape(self):
         return ''.join(self.tape).strip()
+
+    def process_expression(self):
+        expression = self.get_tape()
+        if '+' in expression:
+            self.add()
+        elif '-' in expression:
+            self.subtract()
+        elif '*' in expression:
+            self.multiply()
+        elif '/' in expression:
+            self.divide()
+        elif '%' in expression:
+            self.modulo()
+        elif '^' in expression:
+            self.power()
+        elif '√' in expression:
+            self.square_root()
+        else:
+            self.tape = list("ERROR")
+        self.current_state = 'HALT'
+
+    def to_decimal(self, binary_str):
+        return int(binary_str, 2)
+
+    def to_binary(self, number):
+        return bin(number)[2:]  # Eliminar el prefijo '0b'
+
+    def add(self):
+        numbers = self.get_tape().split('+')
+        result = self.to_decimal(numbers[0]) + self.to_decimal(numbers[1])
+        self.tape = list(self.to_binary(result))
+
+    def subtract(self):
+        numbers = self.get_tape().split('-')
+        result = self.to_decimal(numbers[0]) - self.to_decimal(numbers[1])
+        result = max(0, result)  # Evitar negativos
+        self.tape = list(self.to_binary(result))
+
+    def multiply(self):
+        numbers = self.get_tape().split('*')
+        result = self.to_decimal(numbers[0]) * self.to_decimal(numbers[1])
+        self.tape = list(self.to_binary(result))
+
+    def divide(self):
+        numbers = self.get_tape().split('/')
+        divisor = self.to_decimal(numbers[1])
+        if divisor == 0:
+            result = 'ERROR'
+        else:
+            result = self.to_decimal(numbers[0]) // divisor
+            result = self.to_binary(result)
+        self.tape = list(result)
+
+    def modulo(self):
+        numbers = self.get_tape().split('%')
+        divisor = self.to_decimal(numbers[1])
+        if divisor == 0:
+            result = 'ERROR'
+        else:
+            result = self.to_decimal(numbers[0]) % divisor
+            result = self.to_binary(result)
+        self.tape = list(result)
+
+    def power(self):
+        numbers = self.get_tape().split('^')
+        result = self.to_decimal(numbers[0]) ** self.to_decimal(numbers[1])
+        self.tape = list(self.to_binary(result))
+
+    def square_root(self):
+        number = self.to_decimal(self.get_tape().replace('√', ''))
+        result = int(number ** 0.5)
+        self.tape = list(self.to_binary(result))
+
+
+# 🔥 Ejecutar desde consola
+if __name__ == "__main__":
+    while True:
+        expression = input("💻 Ingresa una operación en binario (o 'salir' para terminar): ")
+        if expression.lower() == 'salir':
+            print("👋 ¡Hasta luego!")
+            break
+
+        # Validación de binario
+        valid_chars = {'0', '1', '+', '-', '*', '/', '%', '^', '√'}
+        if not set(expression).issubset(valid_chars):
+            print("❌ Solo se permiten números binarios y operadores válidos.")
+            continue
+
+        tm = TuringMachine(tape=expression)
+        tm.process_expression()
+        print("✅ Resultado en binario:", tm.get_tape())
