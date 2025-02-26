@@ -129,6 +129,9 @@ if __name__ == "__main__":
             print("👋 ¡Hasta luego!")
             break
 
+        # 🛠️ Elimina espacios antes de procesar la expresión
+        expression = expression.replace(" ", "")
+
         # Validación de binario y caracteres permitidos
         valid_chars = {'0', '1', '+', '-', '*', '/', '%', '^', '√', '(', ')'}
         if not set(expression).issubset(valid_chars):
