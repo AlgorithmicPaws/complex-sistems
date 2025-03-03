@@ -11,7 +11,7 @@ CELL_SIZE = 10
 GRID_WIDTH = WIDTH // CELL_SIZE
 GRID_HEIGHT = HEIGHT // CELL_SIZE
 FPS = 10
-CHARGEFILE = "pattern.txt"
+CHARGEFILE = "pattern-slider1.txt"
 
 # Colors
 BLACK = (0, 0, 0)
