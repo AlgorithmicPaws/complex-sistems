@@ -10,7 +10,7 @@ WIDTH, HEIGHT = 1200, 800
 CELL_SIZE = 10
 GRID_WIDTH = WIDTH // CELL_SIZE
 GRID_HEIGHT = HEIGHT // CELL_SIZE
-FPS = 1
+FPS = 360
 CHARGEFILE = "pattern.txt"
 
 # Colors
@@ -20,6 +20,9 @@ WHITE = (255, 255, 255)
 # Initialize screen
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Conway's Game of Life")
+
+# Initialize font for the clock display
+font = pygame.font.SysFont("Arial", 24)
 
 # Utility: get the absolute path for the pattern file in the same directory as the script.
 def get_pattern_file_path(filename="pattern.txt"):
@@ -67,7 +70,6 @@ def update_grid(grid):
                     new_grid[y, x] = 1
 
     return new_grid
-
 
 def save_pattern(grid, filename="pattern.txt"):
     """Export live cell coordinates to a text file in the same directory as the script."""
@@ -162,72 +164,6 @@ def load_pattern_rle(grid, filename="pattern.rle", offset=(0, 0)):
         print(f"Error loading RLE pattern from {path}: {e}")
     return grid
 
-def load_pattern_rle(grid, filename="pattern.rle", offset=(0, 0)):
-    """Import a pattern from an RLE file and overlay it onto the grid.
-    
-    The RLE file should follow the common Game of Life format:
-      - Lines starting with '#' are comments.
-      - The first non-comment line is the header (e.g., x = 3, y = 3, rule = B3/S23).
-      - The subsequent lines encode the pattern using RLE:
-          - A number preceding a symbol indicates a repetition.
-          - 'b' indicates dead cells (skipped).
-          - 'o' indicates live cells.
-          - '$' indicates the end of a row (move to the next row).
-          - '!' marks the end of the pattern.
-    
-    The pattern is overlaid on the grid using the given offset.
-    """
-    path = get_pattern_file_path(filename)
-    offset_x, offset_y = offset
-    try:
-        with open(path, "r") as f:
-            lines = f.readlines()
-        # Remove comments and blank lines
-        lines = [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
-        if not lines:
-            print("No pattern data found in the RLE file.")
-            return grid
-
-        # The first non-comment line is the header; we skip it.
-        header = lines[0]
-        # Combine the remaining lines (they might be split over multiple lines)
-        pattern_data = "".join(lines[1:])
-
-        x = 0
-        y = 0
-        number = ""
-        i = 0
-        while i < len(pattern_data):
-            char = pattern_data[i]
-            if char.isdigit():
-                number += char
-            elif char == 'b':  # dead cells: simply advance x without setting any cell.
-                count = int(number) if number else 1
-                x += count
-                number = ""
-            elif char == 'o':  # live cells: set the appropriate cells to alive.
-                count = int(number) if number else 1
-                for _ in range(count):
-                    new_x = x + offset_x
-                    new_y = y + offset_y
-                    if 0 <= new_y < grid.shape[0] and 0 <= new_x < grid.shape[1]:
-                        grid[new_y, new_x] = 1
-                    x += 1
-                number = ""
-            elif char == '$':  # end-of-line: move to the next row
-                count = int(number) if number else 1
-                y += count
-                x = 0
-                number = ""
-            elif char == '!':  # end-of-pattern marker
-                break
-            i += 1
-
-        print(f"RLE pattern loaded from {path}")
-    except Exception as e:
-        print(f"Error loading RLE pattern from {path}: {e}")
-    return grid
-
 def main():
     clock = pygame.time.Clock()
     grid = create_grid()
@@ -237,6 +173,8 @@ def main():
 
     offset_x, offset_y = 0, 0
     cell_size = CELL_SIZE
+
+    simulation_time = 0  # simulation clock in seconds
 
     while running:
         for event in pygame.event.get():
@@ -256,8 +194,7 @@ def main():
                     save_pattern(grid)
                 if event.key == pygame.K_i:  # Import pattern
                     grid = load_pattern(grid, offset=(0, 0))
-                if event.key == pygame.K_i:  # Import pattern
-                    # You can change the filename below to the file you wish to load.
+                if event.key == pygame.K_i:  # Import pattern (RLE or txt based on CHARGEFILE)
                     if CHARGEFILE == "osilator.rle":  # or "pattern.txt"
                         grid = load_pattern_rle(grid, CHARGEFILE, offset=(0, 0))
                     else:
@@ -285,8 +222,23 @@ def main():
 
         if not paused:
             grid = update_grid(grid)
+            simulation_time += 1  # Increment simulation time by one second (given FPS=1)
 
         draw_grid(grid, offset_x, offset_y, cell_size)
+
+        # Draw the top-left clock (in seconds)
+        clock_text = font.render(f"Time: {simulation_time}s", True, WHITE)
+        screen.blit(clock_text, (10, 10))
+
+        # Calculate and draw the bottom center clock in hh:mm:ss format
+        hours = simulation_time // 3600
+        minutes = (simulation_time % 3600) // 60
+        seconds = simulation_time % 60
+        time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        clock_text_bottom = font.render(time_str, True, WHITE)
+        text_rect = clock_text_bottom.get_rect(center=(WIDTH // 2, HEIGHT - 30))
+        screen.blit(clock_text_bottom, text_rect)
+
         pygame.display.flip()
         clock.tick(FPS)
 
